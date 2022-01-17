@@ -1,4 +1,3 @@
-# xml label
 TOKEN = ['keyword', 'symbol', 'integerConstant', 'stringConstant', 'identifier']
 
 SYMBOL = '{}()[].,;+-*/&|<>=~'
@@ -48,3 +47,9 @@ KEYWORD = [
     KW_WHILE,
     KW_RETURN
 ]
+
+CLASSVAR_TYPE = ['static', 'field']
+
+VAR_TYPE = ['int', 'char', 'boolean']
+
+SUBROUTINE_TYPE = ['constructor', 'function', 'method']
