@@ -36,8 +36,8 @@ class TOKENIZER():
             else:
                 if line.count('//') != 0:
                     not_comment = line.split('//')[0]
-                    if self.not_pair_symbol(not_comment):
-                        print('there is an invalid string or parenthesis')
+                    if self.not_pair_string(not_comment):
+                        print('there is an invalid string')
                         sys.exit()
                     else:
                         elementList = not_comment.split()
@@ -84,16 +84,8 @@ class TOKENIZER():
         xml = f'<{token}>' + ' ' + str(value) + ' ' + f'</{token}>'
         self.file_write.write(xml+'\n')
 
-    def not_pair_symbol(line):
-        if line.count('"') % 2 != 0:
-            return False
-        elif line.count('(') - line.count(')') != 0:
-            return False
-        elif line.count('[') - line.count(']') != 0:
-            return False
-        elif line.count('{') - line.count('}') != 0:
-            return False
-        return True
+    def not_pair_string(self, line):
+        return True if line.count('"') % 2 != 0 else False
 
     def is_blank(self, line):
         return True if line == '\n' else False
