@@ -48,8 +48,10 @@ KEYWORD = [
     KW_RETURN
 ]
 
-CLASSVAR_TYPE = ['static', 'field']
+CLASSVAR_TYPE = [KW_STATIC, KW_FIELD]
 
-VAR_TYPE = ['int', 'char', 'boolean']
+VAR_TYPE = [KW_INT, KW_CHAR, KW_BOOLEAN]
 
-SUBROUTINE_TYPE = ['constructor', 'function', 'method']
+SUBROUTINE_TYPE = [KW_CONSTRUCTOR, KW_FUNCTION, KW_METHOD]
+
+STATEMENT_TYPE = [KW_LET, KW_IF, KW_ELSE, KW_WHILE, KW_DO, KW_RETURN]
