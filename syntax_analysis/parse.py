@@ -1,5 +1,10 @@
+from operator import ne
+
+from urllib3 import Retry
 from constant import *
 import sys
+import os
+import re
 
 
 class PARSER():
@@ -16,13 +21,20 @@ class PARSER():
         fileName = pathList[-1]
         fileName = fileName.split('.')[0]
         dirName = pathList[-2]
-        self.output = f'..\\analysis_result\\{dirName}\\{fileName}.xml'
+        self.output = f'..\\analysis_result\\{dirName}\\{fileName[:-1]}.xml'
         self.file_write = open(self.output, 'w')
 
         # some issue to handle-1: retraction
         self.retraction = 0
         # some issue to handle-2: process index of the tokenized file
         self.process = 0
+        # some issue to handle-3: className
+        dir = os.listdir(f'..\\test_program\\{dirName}\\')
+        pattern = re.compile(r'\w\.jack')
+        for d in dir:
+            if pattern.search(d) != None:
+                className = d.split('.')[0]
+                VAR_TYPE.append(className)
 
     def parse_end(self):
         self.file_write.close()
@@ -51,9 +63,13 @@ class PARSER():
             write = ' '*self.retraction + arg + '\n'
             self.file_write.write(write)
     
-    def get_element(self):
-        self.process += 1
-        return self.lines[self.process].split(' ')
+    def get_element(self, *arg):
+        if len(arg) == 0:
+            self.process += 1
+            return self.lines[self.process].split(' ')
+        else:
+            if arg[0] != 'n': self.parse_error('wrong arg for get element')
+            return self.lines[self.process+1].split(' ')
     
     def get_next_token_content(self):
         return self.lines[self.process+1].split(' ')[1]
@@ -63,7 +79,6 @@ class PARSER():
         elements= self.get_element()
         if elements[0] == '<identifier>':
             self.write_xml(self.process)
-            VAR_TYPE.append(elements[1])
         else: self.parse_error('wrong token for class name')
     # stage 2
         if self.get_element()[1] == '{':
@@ -74,14 +89,10 @@ class PARSER():
             self.write_xml('<classVarDec>')
             self.retraction += 2
             self.parse_classVarDec()
-            self.retraction -= 2
-            self.write_xml('</classVarDec>')
         if self.get_next_token_content() in SUBROUTINE_TYPE:
             self.write_xml('<subroutineDec>')
             self.retraction += 2
             self.parse_subroutineDec()
-            self.retraction -= 2
-            self.write_xml('</subroutineDec>')
         else: self.parse_error('missing token for subroutine')
     # stage 4
         if self.get_element()[1] == '}':
@@ -114,7 +125,13 @@ class PARSER():
                 self.write_xml(self.process)
             else: self.parse_error('missing ";" for class var create')
 
+            self.retraction -= 2
+            self.write_xml('</classVarDec>')
+
             if self.get_next_token_content() not in CLASSVAR_TYPE: unfinished_classVarDec = False
+            else: 
+                self.write_xml('<classVarDec>')
+                self.retraction += 2
 
     def parse_subroutineDec(self):
         unfinished_shubroutineDect = True
@@ -174,17 +191,12 @@ class PARSER():
                     self.write_xml('<varDec>')
                     self.retraction += 2
                     self.varDec()
-                    self.retraction -= 2
-                    self.write_xml('</varDec>')
-                if self.get_next_token_content in STATEMENT_TYPE:
+                if self.get_next_token_content() in STATEMENT_TYPE:
                     self.write_xml('<statements>')
                     self.retraction += 2
                     self.statements()
-                    self.retraction -= 2
-                    self.write_xml('</statements>')
                 else:
                     self.parse_error('not var or statement in subroutineBody')
-
                 if self.get_element()[1] == '}':
                     self.write_xml(self.process)
                 else: self.parse_error('missing "}" at the end of the statement of subroutine')
@@ -192,8 +204,13 @@ class PARSER():
                 self.retraction -= 2
                 self.write_xml('</subroutineBody>')
             else: self.parse_error('missing "{" at the beginning of subroutine')
-
+            
+            self.retraction -= 2
+            self.write_xml('</subroutineDec>')
             if self.get_next_token_content() not in SUBROUTINE_TYPE: unfinished_shubroutineDect = False
+            else: 
+                self.write_xml('<subroutineDec>')
+                self.retraction += 2
     
     def varDec(self):
         unfinished_localVar_create = True
@@ -202,10 +219,14 @@ class PARSER():
             self.process += 1
             self.write_xml(self.process)
         # stage 2
-            if self.get_element()[1] in VAR_TYPE:
+            next_element = self.get_element('n')
+            if next_element[1] in VAR_TYPE:
+                self.process +=1
+                self.write_xml(self.process)
+            elif next_element[0] == '<identifier>':
+                self.process +=1
                 self.write_xml(self.process)
             else: 
-                print(VAR_TYPE)
                 self.parse_error('wrong var type for local variable(subroutineBody)')
         # stage 3
             unfinished_sameType_localVar_create = True
@@ -223,7 +244,13 @@ class PARSER():
                 self.write_xml(self.process)
             else: self.parse_error('missing ";" for same type local var create')
 
-            if self.get_next_token_content() != KW_VAR: unfinished_localVar_create = False
+            self.retraction -= 2
+            self.write_xml('</varDec>')
+            if self.get_next_token_content() != KW_VAR: 
+                unfinished_localVar_create = False
+            else:
+                self.write_xml('<varDec>')
+                self.retraction += 2
 
     def statements(self):
         unfinished_statements = True
@@ -231,7 +258,7 @@ class PARSER():
             statements_type = self.get_element()[1]
 
             if statements_type == KW_LET:
-                self.write_xml('<letSatement>')
+                self.write_xml('<letStatement>')
                 self.retraction += 2
                 self.write_xml(self.process)
             # stage 1
@@ -250,6 +277,9 @@ class PARSER():
                     if self.get_element()[1] == ']':
                         self.write_xml(self.process)
                     else: self.parse_error('missing "]" in expression of let statement')
+                    if self.get_element()[1] == '=':
+                        self.write_xml(self.process)
+                    else: self.parse_error('missing "=" after "]" of let statmenet')
                 elif next_element[1] == '=':
                     self.write_xml(self.process)
                 else: self.parse_error('assign error in let statement')
@@ -290,32 +320,36 @@ class PARSER():
                 else: self.parse_error('missing "{" in if statement')
             # stage 5
                 self.write_xml('<statements>')
-                self.retraction += 2
-                self.statements()
-                self.retraction -= 2
-                self.write_xml('</statements>')
+                if self.get_element('n')[1] != '}':
+                    self.retraction += 2
+                    self.statements()
+                else:
+                    self.write_xml('</statements>')
             # stage 6
                 if self.get_element()[1] == '}':
                     self.write_xml(self.process)
                 else: self.parse_error('missing "}" in statement')
-                self.write_xml('</ifStatement>')
-                self.retraction += 2
-
-            elif statements_type == KW_ELSE:
-            # stage 1
-                if self.get_element()[1] == '{':
+            # else statement
+                if self.get_element('n')[1] == KW_ELSE:
+                    self.process += 1
                     self.write_xml(self.process)
-                else: self.parse_error('missing "{" in if statement')
-            # stage 2
-                self.write_xml('<statements>')
-                self.retraction += 2
-                self.statements()
+                # stage 1
+                    if self.get_element()[1] == '{':
+                        self.write_xml(self.process)
+                    else: self.parse_error('missing "{" in if statement')
+                # stage 2
+                    self.write_xml('<statements>')
+                    if self.get_element('n')[1] != '}':
+                        self.retraction += 2
+                        self.statements()
+                    else:
+                        self.write_xml('</statements>')
+                # stage 3
+                    if self.get_element()[1] == '}':
+                        self.write_xml(self.process)
+                    else: self.parse_error('missing "{" in if statement')
                 self.retraction -= 2
-                self.write_xml('</statements>')
-            # stage 3
-                if self.get_element()[1] == '}':
-                    self.write_xml(self.process)
-                else: self.parse_error('missing "{" in if statement')
+                self.write_xml('</ifStatement>')
 
             elif statements_type == KW_WHILE:
                 self.write_xml('<whileStatement>')
@@ -334,7 +368,7 @@ class PARSER():
             # stage 3
                 if self.get_element()[1] == ')':
                     self.write_xml(self.process)
-                else: self.parse_error('missing ")" in if statement')
+                else: self.parse_error('missing ")" in while statement')
             # stage 4
                 if self.get_element()[1] == '{':
                     self.write_xml(self.process)
@@ -343,8 +377,6 @@ class PARSER():
                 self.write_xml('<statements>')
                 self.retraction += 2
                 self.statements()
-                self.retraction -= 2
-                self.write_xml('</statements>')
             # stage 6
                 if self.get_element()[1] == '}':
                     self.write_xml(self.process)
@@ -357,10 +389,13 @@ class PARSER():
                 self.retraction += 2
                 self.write_xml(self.process)
                 self.subroutineCall()
+                if self.get_element()[1] == ';':
+                    self.write_xml(self.process)
+                else: self.parse_error('missing ";" at the end of do statement')
                 self.retraction -= 2
                 self.write_xml('</doStatement>')
 
-            else:  # KW_RETURN
+            elif statements_type == KW_RETURN:  # KW_RETURN
                 self.write_xml('<returnStatement>')
                 self.retraction += 2
                 self.write_xml(self.process)
@@ -374,10 +409,15 @@ class PARSER():
                     self.expression()
                     self.retraction -= 2
                     self.write_xml('</expression>')
+                    if self.get_element()[1] == ';':
+                        self.write_xml(self.process)
+                    else: self.parse_error('missing ";" at the end of return statement')
                 self.retraction -= 2
-                self.write_xml('</returnSatement>')
-
-            if self.get_next_token_content() not in STATEMENT_TYPE: unfinished_statements = False
+                self.write_xml('</returnStatement>')
+            if self.get_next_token_content() not in STATEMENT_TYPE: 
+                unfinished_statements = False
+                self.retraction -= 2
+                self.write_xml('</statements>')
 
     def expression(self):
         self.write_xml('<term>')
@@ -385,15 +425,15 @@ class PARSER():
         self.term()
         self.retraction -= 2
         self.write_xml('</term>')
-        unfinished_expression = True if self.get_next_tokene_element() in OP else False
+        unfinished_expression = True if self.get_next_token_content() in OP else False
         while unfinished_expression:
-            self.retraction += 2
+            self.process += 1
             self.write_xml(self.process)
             self.write_xml('<term>')
             self.retraction += 2
             self.term()
             self.retraction -= 2
-            self.write_xml('</terM>')
+            self.write_xml('</term>')
 
             if self.get_next_token_content() not in OP: unfinished_expression = False
 
@@ -407,61 +447,67 @@ class PARSER():
         if next_element[1] == '(':
             self.write_xml(self.process)
             self.write_xml('<expressionList>')
-            self.retraction += 2
-            self.expressionList()
-            self.retraction -= 2
+            if self.get_element('n')[1] != ')':
+                self.retraction += 2
+                self.expressionList()
+                self.retraction -= 2
             self.write_xml('</expressionList>')
             if self.get_element()[1] == ')':
-                self.write_xml(self.parse_error)
-            else: self.parse_error('missing ")" in subroutineCall')
-        elif next_element[0] == '<identifier>':
-            self.write_xml(self.process)
-            if self.get_element()[1] == ',':
                 self.write_xml(self.process)
-            else: self.parse_error('missing "," in subroutineCall')
+            else: self.parse_error('missing ")" in subroutineCall')
+        elif next_element[1] == '.':
+            self.write_xml(self.process)
             if self.get_element()[0] == '<identifier>':
                 self.write_xml(self.process)
             else: self.parse_error('wrong token in subroutineCall')
-            if self.get_element()[1] == ')':
+            if self.get_element()[1] == '(':
                 self.write_xml(self.process)
-            else: self.parse_error('missing ")" in subroutine Call')
+            else: self.parse_error('missing "(" in subroutine Call')
             self.write_xml('<expressionList>')
-            self.retraction += 2
-            self.expressionList()
-            self.retraction -= 2
+            if self.get_next_token_content() != ')':
+                self.retraction += 2
+                self.expressionList()
+                self.retraction -= 2
             self.write_xml('</expressionList>')
             if self.get_element()[1] == ')':
-                self.write_xml(self.parse_error)
+                self.write_xml(self.process)
             else: self.parse_error('missing ")" in subroutineCall')
 
     def expressionList(self):
-        self.write_xml('<expressionList>')
+        self.write_xml('<expression>')
         self.retraction += 2
         self.expression()
+        self.retraction -= 2
+        self.write_xml('</expression>')
         unfinished_expression = True if self.get_next_token_content() == ',' else False
         while unfinished_expression:
-            self.retraction += 1
-            self.write_xml(self.write_xml)
+            self.process += 1
+            self.write_xml(self.process)
             self.write_xml('<expression>')
             self.retraction += 2
             self.expression()
             self.retraction -= 2
             self.write_xml('</expression>')
             if self.get_next_token_content() != ',': unfinished_expression = False
-        self.retraction -= 2
-        self.write_xml('</expressionList>')
 
     def term(self):
-        if self.get_element()[0] == '<integerConstant>':  # intConst
+        next_element = self.get_element('n')
+        if next_element[0] == '<integerConstant>':  # intConst
             self.process += 1
-        elif self.get_element()[0] == '<stringConstant>':  # stringConst
-            self.process += 1
-        elif self.get_element()[0] in KEYWORD_CONSTANT:
-            self.process += 1
-        elif self.get_element()[0] == '<idnentifier>':
             self.write_xml(self.process)
-            next_element = self.get_element()[1]
+        elif next_element[0] == '<stringConstant>':  # stringConst
+            self.process += 1
+            self.write_xml(self.process)
+        elif next_element[1] in KEYWORD_CONSTANT:
+            self.process += 1
+            self.write_xml(self.process)
+        elif next_element[0] == '<identifier>':
+            next_element = self.lines[self.process+2].split(' ')[1]
             if next_element == '[':
+                self.process += 1
+                self.write_xml(self.process)
+                self.process += 1
+                self.write_xml(self.process)
                 self.write_xml('<expression>')
                 self.retraction += 2
                 self.expression()
@@ -470,48 +516,27 @@ class PARSER():
                 if self.get_element()[1] == ']':
                     self.write_xml(self.process)
                 else: self.parse_error('missing "]" in term')
-            elif next_element == '(':
+            elif next_element in ';()=*/|]+-,' or next_element == '&lt;' or next_element == '&gt;':
+                self.process += 1
                 self.write_xml(self.process)
-                self.write_xml('<expressionList>')
-                self.retraction += 2
-                self.expressionList()
-                self.retraction -= 2
-                self.write_xml('</expressionList>')
-                if self.get_element()[1] == ')':
-                    self.write_xml(self.parse_error)
-                else: self.parse_error('missing ")" in subroutineCall')
-            elif next_element[0] == '<identifier>':
+            else:
+                self.subroutineCall()
+        elif self.get_element()[1] == '(':
+            self.write_xml(self.process)
+            self.write_xml('<expression>')
+            self.retraction += 2
+            self.expression()
+            self.retraction -= 2
+            self.write_xml('</expression>')
+            if self.get_element()[1] == ')':
                 self.write_xml(self.process)
-                if self.get_element()[1] == ',':
-                    self.write_xml(self.process)
-                else: self.parse_error('missing "," in subroutineCall')
-                if self.get_element()[0] == '<identifier>':
-                    self.write_xml(self.process)
-                else: self.parse_error('wrong token in subroutineCall')
-                if self.get_element()[1] == ')':
-                    self.write_xml(self.process)
-                else: self.parse_error('missing ")" in subroutine Call')
-                self.write_xml('<expressionList>')
-                self.retraction += 2
-                self.expressionList()
-                self.retraction -= 2
-                self.write_xml('</expressionList>')
-                if self.get_element()[1] == ')':
-                    self.write_xml(self.parse_error)
-                else: self.parse_error('missing ")" in subroutineCall')
-            elif self.get_element()[1] == '(':
-                self.write_xml('<expression>')
-                self.retraction += 2
-                self.expression()
-                self.retraction -= 2
-                self.write_xml('</epxression>')
-                if self.get_element()[1] == ')':
-                    self.write_xml(self.process)
-                else: self.parse_error('missing ")" in term')
-        elif self.get_element()[1] in UNARYOP:
+            else: self.parse_error('missing ")" in term')
+        elif next_element[1] in UNARYOP:
+            self.write_xml(self.process)
             self.write_xml('<term>')
             self.retraction += 2
             self.term()
             self.retraction -= 2
             self.write_xml('</term>')
-        else: self.parse_error('wrong token for term')
+        else: 
+            self.parse_error('wrong token for term')

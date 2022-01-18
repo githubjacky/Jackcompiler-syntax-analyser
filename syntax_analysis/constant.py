@@ -2,9 +2,9 @@ TOKEN = ['keyword', 'symbol', 'integerConstant', 'stringConstant', 'identifier']
 
 SYMBOL = '{}()[].,;+-*/&|<>=~'
 
-OP = '+-*/&|<>='
+OP = ['+', '-', '*', '/', '&amp;', '|', '&lt;', '&gt;', '=', '~']
 
-UNARYOP = '-~'
+UNARYOP = ['-', '~', '&lt;']
 
 KW_CLASS = 'class'
 KW_CONSTRUCTOR = 'constructor'
