@@ -2,6 +2,10 @@ TOKEN = ['keyword', 'symbol', 'integerConstant', 'stringConstant', 'identifier']
 
 SYMBOL = '{}()[].,;+-*/&|<>=~'
 
+OP = '+-*/&|<>='
+
+UNARYOP = '-~'
+
 KW_CLASS = 'class'
 KW_CONSTRUCTOR = 'constructor'
 KW_FUNCTION = 'function'
@@ -55,3 +59,5 @@ VAR_TYPE = [KW_INT, KW_CHAR, KW_BOOLEAN]
 SUBROUTINE_TYPE = [KW_CONSTRUCTOR, KW_FUNCTION, KW_METHOD]
 
 STATEMENT_TYPE = [KW_LET, KW_IF, KW_ELSE, KW_WHILE, KW_DO, KW_RETURN]
+
+KEYWORD_CONSTANT = [KW_TURE, KW_FALSE, KW_NULL, KW_THIS]

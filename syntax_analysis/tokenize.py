@@ -11,11 +11,12 @@ class TOKENIZER():
         file_read.close()
         
         # outputfile
-        fileName = str(jackFile).split('/')[-1]
+        pathList = str(jackFile).split('\\')
+        fileName = pathList[-1]
         fileName = fileName.split('.')[0]
-        dirName = str(jackFile).split('/')[-2]
-        path = f'./tokenize_result/{dirName}/{fileName}_tokenize.xml'
-        self.file_write = open(path, 'w')
+        dirName = pathList[-2]
+        self.output = f'..\\analysis_result\\{dirName}\\{fileName}T.xml'
+        self.file_write = open(self.output, 'w')
         self.file_write.write('<tokens>\n')
 
         # some issue to handle-1: identify the identifier
@@ -81,6 +82,8 @@ class TOKENIZER():
             value = '&lt;'
         elif value == '>':
             value = '&gt;'
+        elif value == '&':
+            value = '&amp;'
         xml = f'<{token}>' + ' ' + str(value) + ' ' + f'</{token}>'
         self.file_write.write(xml+'\n')
 
