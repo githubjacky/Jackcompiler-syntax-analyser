@@ -2,4 +2,4 @@
 - nand to teris project
 
 # reference
-[more information](https://githubjacky.github.io/content/JackCompilerSyntaxAnalyser/index.html)
+- [more information](https://githubjacky.github.io/content/JackCompilerSyntaxAnalyser/index.html)
