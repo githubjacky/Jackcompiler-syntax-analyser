@@ -62,7 +62,3 @@ def element_toekenize_process(self, element):
 <identifier> sum </identifier>
 <symbol> = </symbol>
 ```
-
-
-# reference
-- [more information](https://githubjacky.github.io/content/JackCompilerSyntaxAnalyser/index.html)
